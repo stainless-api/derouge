@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/stainless-api/derouge/internal/httputil"
 	"github.com/stainless-api/derouge/internal/jwe"
 	"github.com/stainless-api/derouge/internal/keystore"
 	"github.com/stainless-api/derouge/internal/revocation"
@@ -40,12 +41,12 @@ type revokeRequest struct {
 func (h *Handlers) Revoke(w http.ResponseWriter, r *http.Request) {
 	var req revokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.Hash == "" {
-		http.Error(w, `{"error":"hash is required"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "hash is required")
 		return
 	}
 
@@ -75,22 +76,22 @@ type mintResponse struct {
 func (h *Handlers) Mint(w http.ResponseWriter, r *http.Request) {
 	var req mintRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if len(req.AllowedHosts) == 0 {
-		http.Error(w, `{"error":"allowed_hosts is required"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "allowed_hosts is required")
 		return
 	}
 	if len(req.Credentials) == 0 {
-		http.Error(w, `{"error":"credentials is required"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "credentials is required")
 		return
 	}
 
 	duration, err := time.ParseDuration(req.ExpDuration)
 	if err != nil {
-		http.Error(w, `{"error":"invalid exp_duration"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid exp_duration")
 		return
 	}
 
@@ -107,7 +108,7 @@ func (h *Handlers) Mint(w http.ResponseWriter, r *http.Request) {
 	token, err := enc.Encrypt(payload)
 	if err != nil {
 		slog.Error("minting JWE failed", "error", err)
-		http.Error(w, `{"error":"encryption failed"}`, http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "encryption failed")
 		return
 	}
 

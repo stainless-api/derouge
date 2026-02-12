@@ -133,7 +133,7 @@ func thumbprint(key *ecdsa.PrivateKey) (string, error) {
 func loadKeyFile(path string) (KeyEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return KeyEntry{}, err
+		return KeyEntry{}, fmt.Errorf("reading key file: %w", err)
 	}
 
 	block, _ := pem.Decode(data)
@@ -153,7 +153,7 @@ func loadKeyFile(path string) (KeyEntry, error) {
 
 	info, err := os.Stat(path)
 	if err != nil {
-		return KeyEntry{}, err
+		return KeyEntry{}, fmt.Errorf("stat key file: %w", err)
 	}
 
 	return KeyEntry{

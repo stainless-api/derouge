@@ -19,8 +19,8 @@ func NewDenyList() *DenyList {
 
 func (d *DenyList) Add(hash string, expiresAt time.Time) {
 	d.mu.Lock()
+	defer d.mu.Unlock()
 	d.entries[hash] = expiresAt
-	d.mu.Unlock()
 }
 
 func (d *DenyList) IsRevoked(hash string) bool {
@@ -36,12 +36,12 @@ func (d *DenyList) IsRevoked(hash string) bool {
 func (d *DenyList) Cleanup() {
 	now := time.Now()
 	d.mu.Lock()
+	defer d.mu.Unlock()
 	for hash, exp := range d.entries {
 		if now.After(exp) {
 			delete(d.entries, hash)
 		}
 	}
-	d.mu.Unlock()
 }
 
 func (d *DenyList) StartCleanup(ctx context.Context, interval time.Duration) {
