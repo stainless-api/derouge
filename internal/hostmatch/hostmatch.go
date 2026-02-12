@@ -1,3 +1,5 @@
+// Package hostmatch checks whether a hostname matches a list of allowed
+// patterns, supporting exact matches and wildcard subdomains.
 package hostmatch
 
 import (

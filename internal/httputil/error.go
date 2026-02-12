@@ -1,3 +1,4 @@
+// Package httputil provides shared HTTP helpers for writing JSON error responses.
 package httputil
 
 import (

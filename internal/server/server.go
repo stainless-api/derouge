@@ -1,3 +1,4 @@
+// Package server wires together the HTTP server, route handlers, and middleware.
 package server
 
 import (
@@ -25,8 +26,16 @@ func New(cfg *config.Config, ks *keystore.KeyStore, p *proxy.Proxy, dl *revocati
 	mux := http.NewServeMux()
 	handlers := NewHandlers(ks, dl)
 
-	mux.HandleFunc("GET /.well-known/jwks.json", handlers.JWKS)
-	mux.HandleFunc("GET /health", handlers.Health)
+	mux.Handle("GET /.well-known/jwks.json", ChainMiddleware(
+		http.HandlerFunc(handlers.JWKS),
+		RecoverMiddleware,
+		LoggerMiddleware,
+	))
+	mux.Handle("GET /health", ChainMiddleware(
+		http.HandlerFunc(handlers.Health),
+		RecoverMiddleware,
+		LoggerMiddleware,
+	))
 	mux.Handle("POST /revoke", ChainMiddleware(
 		http.HandlerFunc(handlers.Revoke),
 		RecoverMiddleware,
@@ -53,8 +62,10 @@ func New(cfg *config.Config, ks *keystore.KeyStore, p *proxy.Proxy, dl *revocati
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:    cfg.Addr,
-			Handler: mux,
+			Addr:              cfg.Addr,
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+			IdleTimeout:       120 * time.Second,
 		},
 		denyList: dl,
 	}

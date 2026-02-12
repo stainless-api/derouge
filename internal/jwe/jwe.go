@@ -1,3 +1,5 @@
+// Package jwe handles encryption and decryption of JSON Web Encryption tokens
+// carrying credential payloads.
 package jwe
 
 import (
@@ -56,7 +58,11 @@ func (e *Encryptor) Encrypt(payload Payload) (string, error) {
 		return "", fmt.Errorf("encrypting: %w", err)
 	}
 
-	return obj.CompactSerialize()
+	serialized, err := obj.CompactSerialize()
+	if err != nil {
+		return "", fmt.Errorf("serializing JWE: %w", err)
+	}
+	return serialized, nil
 }
 
 type Decryptor interface {
