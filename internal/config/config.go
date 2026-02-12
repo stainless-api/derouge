@@ -99,12 +99,6 @@ func parseConfigValue(raw json.RawMessage) (string, error) {
 		if value == "" {
 			return "", fmt.Errorf("environment variable %s not set", envVar)
 		}
-		if len(value) >= 2 {
-			if (value[0] == '"' && value[len(value)-1] == '"') ||
-				(value[0] == '\'' && value[len(value)-1] == '\'') {
-				value = value[1 : len(value)-1]
-			}
-		}
 		return value, nil
 	}
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stainless-api/derouge/internal/config"
+	"github.com/stainless-api/derouge/internal/httputil"
 )
 
 type MiddlewareFunc func(http.Handler) http.Handler
@@ -38,7 +39,7 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				slog.Error("panic recovered", "error", err)
-				http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+				httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -51,7 +52,7 @@ func MintAuthMiddleware(secret config.Secret) MiddlewareFunc {
 			auth := r.Header.Get("Authorization")
 			expected := "Bearer " + string(secret)
 			if subtle.ConstantTimeCompare([]byte(auth), []byte(expected)) != 1 {
-				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				httputil.WriteError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
 			next.ServeHTTP(w, r)

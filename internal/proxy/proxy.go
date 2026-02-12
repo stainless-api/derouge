@@ -3,7 +3,6 @@ package proxy
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stainless-api/derouge/internal/hostmatch"
+	"github.com/stainless-api/derouge/internal/httputil"
 	"github.com/stainless-api/derouge/internal/jwe"
 	"github.com/stainless-api/derouge/internal/revocation"
 	"github.com/stainless-api/derouge/internal/secretutil"
@@ -43,7 +43,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token, ok := extractBearer(r)
 	if !ok {
 		trace.StatusCode = http.StatusUnauthorized
-		writeError(w, http.StatusUnauthorized, "missing or invalid Authorization header")
+		httputil.WriteError(w, http.StatusUnauthorized, "missing or invalid Authorization header")
 		return
 	}
 
@@ -52,7 +52,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if p.denyList.IsRevoked(hash) {
 		trace.DenyListCheck = time.Since(t0)
 		trace.StatusCode = http.StatusForbidden
-		writeError(w, http.StatusForbidden, "token revoked")
+		httputil.WriteError(w, http.StatusForbidden, "token revoked")
 		return
 	}
 	trace.DenyListCheck = time.Since(t0)
@@ -63,7 +63,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("JWE decryption failed", "error", err)
 		trace.StatusCode = http.StatusUnauthorized
-		writeError(w, http.StatusUnauthorized, "invalid token")
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid token")
 		return
 	}
 	trace.CredentialCount = len(payload.Credentials)
@@ -73,7 +73,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	trace.PathParse = time.Since(t0)
 	if err != nil {
 		trace.StatusCode = http.StatusBadRequest
-		writeError(w, http.StatusBadRequest, err.Error())
+		httputil.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	trace.TargetHost = targetHost
@@ -84,7 +84,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		trace.HostMatch = time.Since(t0)
 		slog.Warn("host not allowed", "host", targetHost, "allowed", payload.AllowedHosts)
 		trace.StatusCode = http.StatusForbidden
-		writeError(w, http.StatusForbidden, "target host not allowed")
+		httputil.WriteError(w, http.StatusForbidden, "target host not allowed")
 		return
 	}
 	trace.HostMatch = time.Since(t0)
@@ -101,7 +101,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		trace.RequestBuild = time.Since(t0)
 		trace.StatusCode = http.StatusInternalServerError
-		writeError(w, http.StatusInternalServerError, "failed to create request")
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to create request")
 		return
 	}
 
@@ -132,7 +132,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("upstream request failed", "error", err)
 		trace.StatusCode = http.StatusBadGateway
-		writeError(w, http.StatusBadGateway, "upstream request failed")
+		httputil.WriteError(w, http.StatusBadGateway, "upstream request failed")
 		return
 	}
 	defer resp.Body.Close()
@@ -274,8 +274,3 @@ func isStreaming(resp *http.Response) bool {
 	return strings.HasPrefix(ct, "text/event-stream")
 }
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
-}
