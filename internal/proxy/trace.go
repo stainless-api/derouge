@@ -1,9 +1,6 @@
 package proxy
 
-import (
-	"context"
-	"time"
-)
+import "time"
 
 type RequestTrace struct {
 	Start time.Time
@@ -26,19 +23,7 @@ type RequestTrace struct {
 	TargetPath     string
 	StatusCode     int
 	CredentialCount int
-	RequestBodyBytes  int64
 	ResponseBodyBytes int64
 }
 
 type TraceCallback func(RequestTrace)
-
-type contextKey struct{}
-
-func traceFromContext(ctx context.Context) *RequestTrace {
-	t, _ := ctx.Value(contextKey{}).(*RequestTrace)
-	return t
-}
-
-func contextWithTrace(ctx context.Context, t *RequestTrace) context.Context {
-	return context.WithValue(ctx, contextKey{}, t)
-}
