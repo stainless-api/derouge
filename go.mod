@@ -1,6 +1,6 @@
 module github.com/stainless-api/derouge
 
-go 1.26rc1
+go 1.26
 
 require (
 	github.com/go-jose/go-jose/v4 v4.1.3
