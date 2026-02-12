@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -183,6 +184,28 @@ func TestProxyForwardsBody(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, `{"query":"test"}`, w.Body.String())
+}
+
+func TestWriteErrorProducesValidJSON(t *testing.T) {
+	p, enc, _ := setupProxy(t)
+
+	// Scheme containing a double quote to trigger JSON injection
+	token := mintToken(t, enc, []string{"example.com"}, []jwe.Credential{
+		{Header: "X-Key", Value: "val"},
+	})
+
+	req := httptest.NewRequest("GET", `/a"b/host/path`, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+
+	p.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// The response must be valid JSON
+	var errResp map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &errResp)
+	require.NoError(t, err, "response body is not valid JSON: %s", w.Body.String())
+	assert.Contains(t, errResp["error"], "invalid scheme")
 }
 
 func TestParseTargetFromPath(t *testing.T) {
