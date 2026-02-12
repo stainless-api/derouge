@@ -1,3 +1,5 @@
+// Package proxy implements a reverse proxy that decrypts JWE bearer tokens,
+// injects credentials into upstream requests, and streams responses back.
 package proxy
 
 import (
@@ -26,8 +28,11 @@ type Proxy struct {
 }
 
 func New(decryptor jwe.Decryptor, denyList *revocation.DenyList) *Proxy {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = 30 * time.Second
+
 	return &Proxy{
-		client:    &http.Client{},
+		client:    &http.Client{Transport: transport},
 		decryptor: decryptor,
 		denyList:  denyList,
 	}
@@ -255,8 +260,8 @@ func hashJWE(token string) string {
 // and security-sensitive headers (Authorization, Cookie) that must not leak to upstream.
 func copyHeaders(dst, src http.Header) {
 	for k, v := range src {
-		if k == "Connection" || k == "Upgrade" || k == "Host" ||
-			k == "Authorization" || k == "Cookie" {
+		switch k {
+		case "Connection", "Upgrade", "Host", "Authorization", "Cookie":
 			continue
 		}
 		dst[k] = v

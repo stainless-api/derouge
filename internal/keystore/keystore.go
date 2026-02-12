@@ -1,3 +1,5 @@
+// Package keystore manages ECDSA key pairs used for JWE encryption and decryption,
+// supporting loading from disk and on-demand generation.
 package keystore
 
 import (

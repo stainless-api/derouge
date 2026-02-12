@@ -25,7 +25,9 @@ func NewHandlers(ks *keystore.KeyStore, dl *revocation.DenyList) *Handlers {
 func (h *Handlers) JWKS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
-	json.NewEncoder(w).Encode(h.keyStore.JWKS())
+	if err := json.NewEncoder(w).Encode(h.keyStore.JWKS()); err != nil {
+		slog.Warn("failed to encode JWKS response", "error", err)
+	}
 }
 
 func (h *Handlers) Health(w http.ResponseWriter, r *http.Request) {
@@ -50,9 +52,11 @@ func (h *Handlers) Revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresAt := time.Unix(req.ExpiresAt, 0)
+	var expiresAt time.Time
 	if req.ExpiresAt == 0 {
 		expiresAt = time.Now().Add(24 * time.Hour)
+	} else {
+		expiresAt = time.Unix(req.ExpiresAt, 0)
 	}
 
 	h.denyList.Add(req.Hash, expiresAt)
@@ -113,8 +117,10 @@ func (h *Handlers) Mint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(mintResponse{
+	if err := json.NewEncoder(w).Encode(mintResponse{
 		Token:     token,
 		ExpiresAt: expiresAt.UTC().Format(time.RFC3339),
-	})
+	}); err != nil {
+		slog.Warn("failed to encode mint response", "error", err)
+	}
 }

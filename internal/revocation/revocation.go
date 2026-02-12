@@ -1,3 +1,5 @@
+// Package revocation implements an in-memory deny list for revoking JWE tokens
+// by their SHA-256 hash, with automatic expiry cleanup.
 package revocation
 
 import (

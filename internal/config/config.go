@@ -1,3 +1,5 @@
+// Package config loads and validates server configuration from a JSON file,
+// with support for environment variable references.
 package config
 
 import (
