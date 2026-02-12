@@ -95,8 +95,8 @@ func parseConfigValue(raw json.RawMessage) (string, error) {
 	}
 
 	if envVar, ok := ref["$env"]; ok {
-		value := os.Getenv(envVar)
-		if value == "" {
+		value, found := os.LookupEnv(envVar)
+		if !found {
 			return "", fmt.Errorf("environment variable %s not set", envVar)
 		}
 		return value, nil

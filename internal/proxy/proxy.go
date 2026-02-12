@@ -154,7 +154,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
-				w.Write(buf[:n])
+				if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+					break
+				}
 				responseBytes += int64(n)
 				if ok {
 					flusher.Flush()
@@ -165,7 +167,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		responseBytes, _ = io.Copy(w, resp.Body)
+		var copyErr error
+		responseBytes, copyErr = io.Copy(w, resp.Body)
+		if copyErr != nil {
+			slog.Warn("error copying response body", "error", copyErr)
+		}
 	}
 	trace.ResponseStream = time.Since(t0)
 	trace.ResponseBodyBytes = responseBytes
@@ -233,12 +239,8 @@ func parseTargetFromPath(reqPath string) (scheme, host, path string, err error) 
 }
 
 func extractBearer(r *http.Request) (string, bool) {
-	auth := r.Header.Get("Authorization")
-	if !strings.HasPrefix(auth, "Bearer ") {
-		return "", false
-	}
-	token := auth[7:]
-	if token == "" {
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !ok || token == "" {
 		return "", false
 	}
 	return token, true
@@ -249,6 +251,8 @@ func hashJWE(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// copyHeaders copies request headers, skipping hop-by-hop headers (Connection, Upgrade, Host)
+// and security-sensitive headers (Authorization, Cookie) that must not leak to upstream.
 func copyHeaders(dst, src http.Header) {
 	for k, v := range src {
 		if k == "Connection" || k == "Upgrade" || k == "Host" ||

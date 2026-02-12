@@ -125,7 +125,7 @@ func thumbprint(key *ecdsa.PrivateKey) (string, error) {
 	jwk := jose.JSONWebKey{Key: &key.PublicKey}
 	kid, err := jwk.Thumbprint(crypto.SHA256)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("computing JWK thumbprint: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(kid), nil
 }
